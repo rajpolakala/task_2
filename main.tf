@@ -16,7 +16,7 @@ resource "aws_instance" "aws_ubuntu" {
 resource "aws_security_group" "demo_sg" {
   name        = "demo_sg"
   description = "allow ssh on 22 & http on port 80"
-  vpc_id      = aws_vpc.default.id
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     from_port        = 80
