@@ -10,7 +10,6 @@ data "aws_vpc" "default" {
 resource "aws_instance" "aws_ubuntu" {
   instance_type          = var.instance_type
   ami                    = var.ami
-  key_name               = var.key_name
   user_data              = file("userdata.sh")
 }
 
