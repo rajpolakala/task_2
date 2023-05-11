@@ -1,0 +1,67 @@
+#!/bin/bash
+set -x
+
+#Set variables
+baseDir=$(pwd)
+rsa_l1="${baseDir}/clearance/rsa/id_rsa_L1"
+rsa_l1_pub="${baseDir}/clearance/rsa/id_rsa_L1.pub"
+rsa_l2="${baseDir}/clearance/rsa/id_rsa_L2"
+rsa_l2_pub="${baseDir}/clearance/rsa/id_rsa_L2.pub"
+rsa_user="cda"
+L1="u1065816.test.cloud.fedex.com"
+L2="u1070506.test.cloud.fedex.com"
+L3="u1068423.test.cloud.fedex.com"
+L4=("u1070380.test.cloud.fedex.com", "u1070695.test.cloud.fedex.com")
+deploy_dir="/opt/fedex/security/deploy_scripts"
+
+#Set permissions on rsa key
+chmod -R 700 "${baseDir}/clearance/rsa"/*
+
+# Check command line arguments
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $0 L1|L2|L3|L4" >&2
+  exit 1
+fi
+# Use appropriate variable
+
+case "$1" in
+  L1)
+    host="$L1"
+    rsa="$rsa_l1"
+    rsa_pub="$rsa_l1_pub"
+    ;;
+  L2)
+    host="$L2"
+    rsa="$rsa_l2"
+    rsa_pub="$rsa_l2_pub"
+    ;;
+  L3)
+    host="$L3"
+    ;;
+  L4)
+    host_list=("${L4[@]}")
+    ;;
+  *)
+    echo "Unknown argument: $1" >&2
+    exit 1
+    ;;
+esac
+
+
+#Remove old files
+echo "Removing old kit-sec files on host: $host ..."
+ssh -o StrictHostKeyChecking=no -i ${rsa} -i ${rsa_pub} "${rsa_user}@${host}" "rm -rf ${deploy_dir}/*"
+
+if [ "${#host_list[@]}" -gt 0 ]; then
+  for machine in ${host_list[@]}; do
+    echo "Copying the kit-sec files to host: $machine .."
+    scp -o StrictHostKeyChecking=no -i ${rsa} -i ${rsa_pub} -r set*.xml Jen* "${rsa_user}@${machine}:${deploy_dir}/"
+  done
+else
+  echo "Copying the kit-sec files to host: $host .."
+  scp -o StrictHostKeyChecking=no -i ${rsa} -i ${rsa_pub} -r sec-*.tgz deploy-sec*.sh post-deploy-sec*.sh "${rsa_user}@${host}:${deploy_dir}/"
+  echo "Execute deploy script on host: $host ..."
+  ssh -o StrictHostKeyChecking=no -i ${rsa} -i ${rsa_pub} "${rsa_user}@${host}" "chmod 755 ${deploy_dir}/*"
+  echo "Execute deploy script on host: $host ..."
+  ssh -o StrictHostKeyChecking=no -i ${rsa} -i ${rsa_pub} "${rsa_user}@${host}" "cd ${deploy_dir}; ./deploy-sec*.sh $1 -i"
+fi   
